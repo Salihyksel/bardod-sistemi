@@ -307,7 +307,7 @@ function setStatus(msg, type='') {
   el.className = 'status-bar ' + type;
 }
 
-// ── PDF okuma: satır bazlı ──────────────────────────────────────────────────
+// ── PDF okuma ──────────────────────────────────────────────────────────────
 async function handlePDF(files) {
   if (!files.length) return;
   setStatus('PDF okunuyor...', 'info');
@@ -322,161 +322,90 @@ async function handlePDF(files) {
     try {
       const ab  = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-
-      // Her sayfadan satırları topla (y koordinatına göre grupla)
-      let allLines = [];
+      // Her sayfa = ayrı fatura → bağımsız işle
       for (let p = 1; p <= pdf.numPages; p++) {
         const page    = await pdf.getPage(p);
         const content = await page.getTextContent();
-        const lines   = groupIntoLines(content.items);
-        allLines = allLines.concat(lines);
+        processPageItems(content.items, file.name);
       }
-
-      extractFromLines(allLines, file.name);
     } catch(e) {
       setStatus('PDF okunamadı: ' + e.message, 'err');
     }
   }
 }
 
-// PDF metin öğelerini y-koordinatına göre satırlara grupla
-function groupIntoLines(items) {
-  // y-koordinatına göre tolerans bantlarına grupla (Türkçe karakter / baseline farkları için)
-  const TOL = 3;
-  const buckets = []; // [{y, items:[{x,str}]}]
-  items.forEach(item => {
-    const y = item.transform[5];
-    const x = item.transform[4];
-    const str = item.str;
-    if (!str) return;
-    let b = buckets.find(b => Math.abs(b.y - y) <= TOL);
-    if (!b) { b = { y, items: [] }; buckets.push(b); }
-    b.items.push({ x, str });
+// ── PDF öğelerini satırlara dönüştür ──────────────────────────────────────
+// fontSize'a bakarak gerçek kelime aralığını hesapla → boşluk sorununu çözer
+function buildLines(els) {
+  const TOL = 4;
+  const buckets = [];
+  els.forEach(e => {
+    let b = buckets.find(b => Math.abs(b.y - e.y) <= TOL);
+    if (!b) { b = { y: e.y, els: [] }; buckets.push(b); }
+    b.els.push(e);
   });
-  // y azalan (üstten alta), her satır içinde x artan
   buckets.sort((a, b) => b.y - a.y);
-  return buckets
-    .map(b => {
-      b.items.sort((a, c) => a.x - c.x);
-      // Aralarında boşluk korunarak birleştir
-      let line = '';
-      let lastX = null;
-      b.items.forEach(it => {
-        if (lastX !== null && it.x - lastX > 2 && !line.endsWith(' ') && !it.str.startsWith(' ')) {
+  return buckets.map(b => {
+    b.els.sort((a, c) => a.x - c.x);
+    let line = '', lastRight = null, lastFontSize = 10;
+    b.els.forEach(e => {
+      if (lastRight !== null) {
+        const gap = e.x - lastRight;
+        // Font boyutunun %30'undan fazla boşluk varsa space ekle
+        const spaceThreshold = lastFontSize * 0.30;
+        if (gap > spaceThreshold && !line.endsWith(' ') && !e.str.startsWith(' ')) {
           line += ' ';
         }
-        line += it.str;
-        lastX = it.x + (it.str.length * 2);
-      });
-      return line.replace(/\s+/g, ' ').trim();
-    })
-    .filter(l => l.length > 0);
+      }
+      line += e.str;
+      lastRight = e.x + e.w;
+      lastFontSize = e.fs || 10;
+    });
+    return line.replace(/\s+/g, ' ').trim();
+  }).filter(l => l.length > 0);
 }
 
-// ── Müşteri adı çıkarma: SAYIN için çok-stratejili (TR uyumlu) ──────────────
-function extractCustomerName(lines) {
-  console.log('[extractCustomerName] satırlar:', lines);
+// ── Sayfanın ham öğelerini işle: sütun ayır → isim + kod bul ──────────────
+function processPageItems(items, source) {
+  // Öğeleri normalize et
+  const els = items.map(it => ({
+    x:  it.transform[4],
+    y:  it.transform[5],
+    str: (it.str || '').trim(),
+    w:  it.width  || 0,
+    fs: it.transform[0] || 10   // font size tahmini
+  })).filter(e => e.str.length > 0);
 
-  const cleanName = (raw) => {
-    if (!raw) return '';
-    let s = raw
-      .replace(/[\t\r\n]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .replace(/^[:\-,;\.\s]+/, '')
-      .replace(/[:\-,;\s]+$/, '')
-      .replace(/^say[ıi]n[\s:,\-]*/i, '')
-      .replace(/\s+(?:bey|han[ıi]m|hanim)$/i, '')
-      .trim();
-    return s;
-  };
+  if (!els.length) return;
 
-  // Adres / fatura gürültüsü içeriyor mu?
-  const isNoise = (s) => {
-    if (!s) return true;
-    if (/[0-9]/.test(s)) return true;
-    return /(adres|mah\.?|mahalle|mahallesi|sok\.?|sokak|sokağ|cad\.?|cadde|cd\.?|bulvar|blv|no\s*[:\.]|daire|kat\s*[:\.]|apt|apartman|site|blok|tc(kn)?|vergi|tel\.?|telefon|gsm|e[\-\s]?posta|email|m[üu]şteri|fatura|tarih|kampanya|kodu|şube|şehir|il[çc]e|posta|kutu|merkez|ettn|iban|banka|özet|senaryo|sayfa|toplam|tutar|kdv|vkn|t[üu]rkiye|t[üu]rkiy[ea])/i.test(s);
-  };
+  // Sayfa ortasını bul → sol/sağ sütun
+  const pageRight = Math.max(...els.map(e => e.x + e.w));
+  const midX      = pageRight / 2;
 
-  const isLikelyName = (s, allowSingleWord = false) => {
-    if (!s) return false;
-    if (s.length < 3 || s.length > 80) return false;
-    if (isNoise(s)) return false;
-    const words = s.split(/\s+/).filter(Boolean);
-    if (words.length < (allowSingleWord ? 1 : 2)) return false;
-    if (words.length > 6) return false;
-    return words.every(w => /^[A-Za-zÇĞİIÖŞÜçğıiöşü]/.test(w) && w.length >= 2);
-  };
+  const leftLines  = buildLines(els.filter(e => e.x <  midX));
+  const rightLines = buildLines(els.filter(e => e.x >= midX));
+  const allLines   = buildLines(els);
 
-  const tryClean = (raw, allowSingleWord = false) => {
-    const c = cleanName(raw);
-    return isLikelyName(c, allowSingleWord) ? c : '';
-  };
+  // İsim: önce sol sütun (müşteri bloğu orada), yoksa sağ, yoksa tüm sayfa
+  let name = extractCustomerName(leftLines);
+  if (!name) name = extractCustomerName(rightLines);
+  if (!name) name = extractCustomerName(allLines);
 
-  // STRATEJİ 1: Aynı satırda "SAYIN <isim>"
-  for (const ln of lines) {
-    const m = ln.match(/say[ıi]n[\s:,\-]+(.+)/i);
-    if (m) {
-      const n = tryClean(m[1]);
-      if (n) { console.log('[isim S1]', n); return n; }
-    }
-  }
-
-  // STRATEJİ 2: SAYIN tek başına bir satırda → sonraki dolu, geçerli satır
-  for (let i = 0; i < lines.length; i++) {
-    if (/^\s*say[ıi]n\s*[:,\-]?\s*$/i.test(lines[i])) {
-      // önce 2+ kelimeli bir isim ara (sonraki 6 satırda)
-      for (let j = i + 1; j < Math.min(i + 7, lines.length); j++) {
-        const n = tryClean(lines[j], false);
-        if (n) { console.log('[isim S2a]', n, 'satır', j); return n; }
-        // adres satırına geldiysek artık aşağıda isim yok, çık
-        if (isNoise(lines[j])) break;
-      }
-      // bulamadıysak tek kelimeli isim de kabul (sadece bir sonraki satır)
-      for (let j = i + 1; j < Math.min(i + 3, lines.length); j++) {
-        const n = tryClean(lines[j], true);
-        if (n) { console.log('[isim S2b]', n, 'satır', j); return n; }
-        if (isNoise(lines[j])) break;
-      }
-    }
-  }
-
-  // STRATEJİ 3: İsim gibi görünen ilk satır
-  for (const ln of lines) {
-    const t = ln.trim();
-    if (isLikelyName(t)) {
-      console.log('[isim S3]', t);
-      return cleanName(t);
-    }
-  }
-
-  console.log('[isim] bulunamadı');
-  return '';
-}
-
-function extractFromLines(lines, source) {
+  // Kampanya kodlarını tüm sayfada ara
   const codeRegexStr = document.getElementById('regexCode').value;
-  let codeRegex;
-  try { codeRegex = new RegExp(codeRegexStr, 'i'); }
+  let re;
+  try { re = new RegExp(codeRegexStr, 'gi'); }
   catch(e) { setStatus('Geçersiz kod regex: ' + e.message, 'err'); return; }
 
-  // ── Müşteri adı: SAYIN ipucusunu çok-stratejili ara ──
-  const name = extractCustomerName(lines);
-
-  // ── Kampanya kodları: tüm satırlarda ara ──
-  let found = [];
-  const fullText = lines.join('\n');
-  const globalCodeRegex = new RegExp(codeRegexStr, 'gi');
-  let match;
-  while ((match = globalCodeRegex.exec(fullText)) !== null) {
-    const raw = (match[1] || match[0]).trim().replace(/\s+/g, '');
-    if (raw.length >= 4 && !codes.find(c => c.code === raw)) {
-      found.push(raw);
-    }
+  const fullText = allLines.join('\n');
+  let found = [], m;
+  while ((m = re.exec(fullText)) !== null) {
+    const raw = (m[1] || m[0]).trim().replace(/\s+/g, '');
+    if (raw.length >= 4 && !codes.find(c => c.code === raw)) found.push(raw);
   }
 
   if (!found.length) {
-    setStatus(`"${source}" içinde kampanya kodu bulunamadı. Regex'i kontrol edin veya manuel ekleyin.`, 'err');
+    setStatus(`"${source}" sayfasında kampanya kodu bulunamadı.`, 'err');
     return;
   }
 
@@ -485,6 +414,120 @@ function extractFromLines(lines, source) {
     `✓ ${found.length} kod bulundu${name ? ' · Müşteri: ' + name : ' · (isim bulunamadı)'}  —  Toplam: ${codes.length}`,
     'ok'
   );
+  renderCodes();
+  renderBarcodes();
+}
+
+// ── Müşteri adı çıkarıcı ──────────────────────────────────────────────────
+function extractCustomerName(lines) {
+
+  const cleanName = s => s
+    .replace(/[\t\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^[:\-,;\.\s]+/, '').replace(/[:\-,;\s]+$/, '')
+    .replace(/^say[ıi]n[\s:,\-]*/i, '')
+    .replace(/\s+(?:bey|han[ıi]m|hanim)$/i, '')
+    .trim();
+
+  // Kesinlikle adres/fatura satırı mı?
+  // NOT: break yerine "atla (continue)" stratejisi — satır adres olsa bile
+  // döngüden çıkmayız, isim başka satırda olabilir.
+  const isAddressOrNoise = s => {
+    if (!s || s.length < 2) return true;
+    if (/\d/.test(s)) return true;   // rakam = adres numarası veya fatura verisi
+    // Adres/konum kelimeleri
+    if (/\b(mahalle|mahallesi|mah|sokak|sokağı|sokağ|sok|cadde|caddesi|cd|bulvar|bulvarı|blv|şehit|gazi|atatürk|cumhuriyet|istiklal|tramvay|durak|kavşak|yolu|yol|köy|köyü|beld|belde|mezra)\b/i.test(s)) return true;
+    // Daire/bina/kat
+    if (/\b(daire|kat|apt|apartman|site|blok|plaza|residence|rezidans|villa)\b/i.test(s)) return true;
+    // İlçe/şehir isimleri (büyük şehirler)
+    if (/\b(istanbul|ankara|izmir|bursa|konya|antalya|adana|gaziantep|kocaeli|mersin|diyarbakır|samsun|şanlıurfa|hatay|denizli|trabzon|eskişehir|kayseri|malatya|karaman|arnavutköy|yenimahalle|çankaya|keçiören|altındağ|mamak|sincan|batıkent|hadımköy)\b/i.test(s)) return true;
+    // Türkiye ibaresi
+    if (/türkiye/i.test(s)) return true;
+    // Fatura terimleri
+    if (/\b(tckn|t\.c|vergi|vkn|telefon|tel|gsm|e[\-\s]?posta|email|fatura|tarih|kampanya|sipari|senaryo|iban|banka|toplam|tutar|kdv|ptt|trendyol|kargo|ettn|ipek|temizlik|sanayi|ticaret|taahhüt|inşaat|ltd|şti|organize|ekonomi|gross)\b/i.test(s)) return true;
+    return false;
+  };
+
+  // Gerçek isim mi? Adres gürültüsünden geçmiş, harf başlıyor, 2–5 kelime
+  const isName = (s, allowOne = false) => {
+    if (!s || s.length < 3 || s.length > 65) return false;
+    if (isAddressOrNoise(s)) return false;
+    const words = s.split(/\s+/).filter(Boolean);
+    if (words.length < (allowOne ? 1 : 2) || words.length > 5) return false;
+    // Her kelime harf ile başlamalı, en az 2 karakter
+    return words.every(w => w.length >= 2 && /^[A-Za-zÇĞİIÖŞÜçğıiöşü]/.test(w));
+  };
+
+  const tryName = (raw, allowOne = false) => {
+    const c = cleanName(raw);
+    return isName(c, allowOne) ? c : '';
+  };
+
+  // ══ YÖNTEM 1 (ana): SAYIN → TCKN arasında isim ara ══════════════════════
+  // Adres satırlarını ATLA (break değil continue) — isim adres satırlarından
+  // sonra da gelebilir. Sadece TCKN'ye gelince dur.
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^\s*say[ıi]n\s*[,:\-]?\s*$/i.test(lines[i])) continue;
+
+    // TCKN satırını bul
+    let tcknIdx = -1;
+    for (let k = i + 1; k < Math.min(i + 20, lines.length); k++) {
+      if (/\btckn\b/i.test(lines[k])) { tcknIdx = k; break; }
+    }
+    const limit = tcknIdx > -1 ? tcknIdx : Math.min(i + 10, lines.length);
+
+    // SAYIN ile TCKN arasındaki TÜM satırları tara, gürültüleri ATLA (break değil!)
+    for (let j = i + 1; j < limit; j++) {
+      const n = tryName(lines[j]);
+      if (n) { console.log('[isim SAYIN→TCKN]', n, '| satır:', lines[j]); return n; }
+      // adres satırıysa atla ama döngüyü bitirme (continue davranışı — zaten for döngüsü)
+    }
+
+    // 2 kelime bulamazsa tek kelimeyi dene (SAYIN'dan hemen sonraki 3 satır)
+    for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+      if (/\btckn\b/i.test(lines[j])) break;
+      const n = tryName(lines[j], true);
+      if (n) { console.log('[isim SAYIN→tek]', n); return n; }
+    }
+  }
+
+  // ══ YÖNTEM 2: "SAYIN Ad Soyad" aynı satırda ═════════════════════════════
+  for (const ln of lines) {
+    const m = ln.match(/say[ıi]n[\s:,\-]+(.+)/i);
+    if (m) {
+      const n = tryName(m[1]);
+      if (n) { console.log('[isim inline-SAYIN]', n); return n; }
+    }
+  }
+
+  // ══ YÖNTEM 3 (fallback): TCKN satırından hemen önceki isim satırı ════════
+  for (let i = 0; i < lines.length; i++) {
+    if (!/\btckn\b/i.test(lines[i])) continue;
+    for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
+      const n = tryName(lines[j]);
+      if (n) { console.log('[isim TCKN-önce]', n); return n; }
+    }
+  }
+
+  return '';
+}
+
+// Excel için (değişmedi)
+function extractFromLines(lines, source) {
+  const codeRegexStr = document.getElementById('regexCode').value;
+  let re;
+  try { re = new RegExp(codeRegexStr, 'gi'); }
+  catch(e) { setStatus('Geçersiz kod regex: ' + e.message, 'err'); return; }
+
+  const name = extractCustomerName(lines);
+  const fullText = lines.join('\n');
+  let found = [], m;
+  while ((m = re.exec(fullText)) !== null) {
+    const raw = (m[1] || m[0]).trim().replace(/\s+/g, '');
+    if (raw.length >= 4 && !codes.find(c => c.code === raw)) found.push(raw);
+  }
+  if (!found.length) { setStatus(`"${source}" içinde kampanya kodu bulunamadı.`, 'err'); return; }
+  found.forEach(code => codes.push({ code, name, source }));
+  setStatus(`✓ ${found.length} kod bulundu${name ? ' · Müşteri: ' + name : ''}  —  Toplam: ${codes.length}`, 'ok');
   renderCodes();
   renderBarcodes();
 }
