@@ -279,24 +279,23 @@
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-let codes = []; // [{code, name, source}]
+let codes = [];
 
 function switchTab(t) {
-  document.getElementById('tab-pdf').style.display   = t === 'pdf'   ? '' : 'none';
-  document.getElementById('tab-excel').style.display = t === 'excel' ? '' : 'none';
-  document.getElementById('tabPDF').className   = 'tab' + (t === 'pdf'   ? ' active' : '');
-  document.getElementById('tabExcel').className = 'tab' + (t === 'excel' ? ' active' : '');
+  document.getElementById('tab-pdf').style.display   = t==='pdf'   ? '' : 'none';
+  document.getElementById('tab-excel').style.display = t==='excel' ? '' : 'none';
+  document.getElementById('tabPDF').className   = 'tab'+(t==='pdf'   ? ' active':'');
+  document.getElementById('tabExcel').className = 'tab'+(t==='excel' ? ' active':'');
 }
 
 ['pdfDrop','xlsDrop'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
-  el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('dragover'); });
-  el.addEventListener('dragleave', () => el.classList.remove('dragover'));
-  el.addEventListener('drop', e => {
+  el.addEventListener('dragover', e=>{e.preventDefault();el.classList.add('dragover');});
+  el.addEventListener('dragleave', ()=>el.classList.remove('dragover'));
+  el.addEventListener('drop', e=>{
     e.preventDefault(); el.classList.remove('dragover');
-    if (id === 'pdfDrop') handlePDF(e.dataTransfer.files);
+    if(id==='pdfDrop') handlePDF(e.dataTransfer.files);
     else handleExcel(e.dataTransfer.files);
   });
 });
@@ -307,229 +306,142 @@ function setStatus(msg, type='') {
   el.className = 'status-bar ' + type;
 }
 
-// ── PDF okuma ──────────────────────────────────────────────────────────────
+// ── PDF: her sayfa bağımsız işlenir ───────────────────────────────────────
 async function handlePDF(files) {
   if (!files.length) return;
   setStatus('PDF okunuyor...', 'info');
   const listEl = document.getElementById('pdfFileList');
-
   for (const file of files) {
     const pill = document.createElement('div');
     pill.className = 'file-pill';
-    pill.innerHTML = `📄 ${file.name}`;
+    pill.innerHTML = '📄 ' + file.name;
     listEl.appendChild(pill);
-
     try {
       const ab  = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-      // Her sayfa = ayrı fatura → bağımsız işle
+      const pdf = await pdfjsLib.getDocument({data: ab}).promise;
       for (let p = 1; p <= pdf.numPages; p++) {
         const page    = await pdf.getPage(p);
         const content = await page.getTextContent();
         processPageItems(content.items, file.name);
       }
-    } catch(e) {
-      setStatus('PDF okunamadı: ' + e.message, 'err');
-    }
+    } catch(e) { setStatus('PDF okunamadı: ' + e.message, 'err'); }
   }
 }
 
-// ── PDF öğelerini satırlara dönüştür ──────────────────────────────────────
-// fontSize'a bakarak gerçek kelime aralığını hesapla → boşluk sorununu çözer
+// ── PDF öğelerini satırlara dönüştür (font-aware boşluk) ──────────────────
 function buildLines(els) {
   const TOL = 4;
   const buckets = [];
   els.forEach(e => {
     let b = buckets.find(b => Math.abs(b.y - e.y) <= TOL);
-    if (!b) { b = { y: e.y, els: [] }; buckets.push(b); }
+    if (!b) { b = {y: e.y, els: []}; buckets.push(b); }
     b.els.push(e);
   });
-  buckets.sort((a, b) => b.y - a.y);
+  buckets.sort((a,b) => b.y - a.y);
   return buckets.map(b => {
-    b.els.sort((a, c) => a.x - c.x);
-    let line = '', lastRight = null, lastFontSize = 10;
+    b.els.sort((a,c) => a.x - c.x);
+    let line = '', lastRight = null, lastFs = 10;
     b.els.forEach(e => {
       if (lastRight !== null) {
         const gap = e.x - lastRight;
-        // Font boyutunun %30'undan fazla boşluk varsa space ekle
-        const spaceThreshold = lastFontSize * 0.30;
-        if (gap > spaceThreshold && !line.endsWith(' ') && !e.str.startsWith(' ')) {
+        if (gap > lastFs * 0.25 && !line.endsWith(' ') && !e.str.startsWith(' '))
           line += ' ';
-        }
       }
       line += e.str;
       lastRight = e.x + e.w;
-      lastFontSize = e.fs || 10;
+      lastFs = e.fs || 10;
     });
-    return line.replace(/\s+/g, ' ').trim();
+    return line.replace(/\s+/g,' ').trim();
   }).filter(l => l.length > 0);
 }
 
-// ── Sayfanın ham öğelerini işle: sütun ayır → isim + kod bul ──────────────
+// ── Sayfa öğelerini işle: sütun ayır, isim + kampanya kodu bul ────────────
 function processPageItems(items, source) {
-  // Öğeleri normalize et
   const els = items.map(it => ({
-    x:  it.transform[4],
-    y:  it.transform[5],
-    str: (it.str || '').trim(),
-    w:  it.width  || 0,
-    fs: it.transform[0] || 10   // font size tahmini
+    x:   it.transform[4],
+    y:   it.transform[5],
+    str: (it.str||'').trim(),
+    w:   it.width||0,
+    fs:  it.transform[0]||10
   })).filter(e => e.str.length > 0);
-
   if (!els.length) return;
 
-  // Sayfa ortasını bul → sol/sağ sütun
   const pageRight = Math.max(...els.map(e => e.x + e.w));
-  const midX      = pageRight / 2;
+  const midX = pageRight / 2;
 
-  const leftLines  = buildLines(els.filter(e => e.x <  midX));
-  const rightLines = buildLines(els.filter(e => e.x >= midX));
-  const allLines   = buildLines(els);
+  // Sol sütun = müşteri bloğu (SAYIN + isim)
+  const leftLines = buildLines(els.filter(e => e.x < midX));
+  const allLines  = buildLines(els);
 
-  // İsim: önce sol sütun (müşteri bloğu orada), yoksa sağ, yoksa tüm sayfa
   let name = extractCustomerName(leftLines);
-  if (!name) name = extractCustomerName(rightLines);
   if (!name) name = extractCustomerName(allLines);
 
-  // Kampanya kodlarını tüm sayfada ara
   const codeRegexStr = document.getElementById('regexCode').value;
   let re;
   try { re = new RegExp(codeRegexStr, 'gi'); }
-  catch(e) { setStatus('Geçersiz kod regex: ' + e.message, 'err'); return; }
+  catch(e) { setStatus('Geçersiz regex: '+e.message,'err'); return; }
 
   const fullText = allLines.join('\n');
-  let found = [], m;
+  let found=[], m;
   while ((m = re.exec(fullText)) !== null) {
-    const raw = (m[1] || m[0]).trim().replace(/\s+/g, '');
+    const raw = (m[1]||m[0]).trim().replace(/\s+/g,'');
     if (raw.length >= 4 && !codes.find(c => c.code === raw)) found.push(raw);
   }
-
-  if (!found.length) {
-    setStatus(`"${source}" sayfasında kampanya kodu bulunamadı.`, 'err');
-    return;
-  }
-
-  found.forEach(code => codes.push({ code, name, source }));
-  setStatus(
-    `✓ ${found.length} kod bulundu${name ? ' · Müşteri: ' + name : ' · (isim bulunamadı)'}  —  Toplam: ${codes.length}`,
-    'ok'
-  );
+  if (!found.length) { setStatus('"'+source+'" sayfasında kampanya kodu bulunamadı.','err'); return; }
+  found.forEach(code => codes.push({code, name, source}));
+  setStatus('✓ '+found.length+' kod'+(name?' · '+name:'')+'  —  Toplam: '+codes.length,'ok');
   renderCodes();
   renderBarcodes();
 }
 
-// ── Müşteri adı çıkarıcı ──────────────────────────────────────────────────
+// ── MÜŞTERİ ADI: SADECE SAYIN'IN HEMEN ALTINDAKİ SATIR ───────────────────
+// Başka hiçbir yere bakılmaz — ne TCKN aralığı ne fallback liste tarama.
 function extractCustomerName(lines) {
-
-  const cleanName = s => s
-    .replace(/[\t\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
-    .replace(/^[:\-,;\.\s]+/, '').replace(/[:\-,;\s]+$/, '')
-    .replace(/^say[ıi]n[\s:,\-]*/i, '')
-    .replace(/\s+(?:bey|han[ıi]m|hanim)$/i, '')
-    .trim();
-
-  // Kesinlikle adres/fatura satırı mı?
-  // NOT: break yerine "atla (continue)" stratejisi — satır adres olsa bile
-  // döngüden çıkmayız, isim başka satırda olabilir.
-  const isAddressOrNoise = s => {
-    if (!s || s.length < 2) return true;
-    if (/\d/.test(s)) return true;   // rakam = adres numarası veya fatura verisi
-    // Adres/konum kelimeleri
-    if (/\b(mahalle|mahallesi|mah|sokak|sokağı|sokağ|sok|cadde|caddesi|cd|bulvar|bulvarı|blv|şehit|gazi|atatürk|cumhuriyet|istiklal|tramvay|durak|kavşak|yolu|yol|köy|köyü|beld|belde|mezra)\b/i.test(s)) return true;
-    // Daire/bina/kat
-    if (/\b(daire|kat|apt|apartman|site|blok|plaza|residence|rezidans|villa)\b/i.test(s)) return true;
-    // İlçe/şehir isimleri (büyük şehirler)
-    if (/\b(istanbul|ankara|izmir|bursa|konya|antalya|adana|gaziantep|kocaeli|mersin|diyarbakır|samsun|şanlıurfa|hatay|denizli|trabzon|eskişehir|kayseri|malatya|karaman|arnavutköy|yenimahalle|çankaya|keçiören|altındağ|mamak|sincan|batıkent|hadımköy)\b/i.test(s)) return true;
-    // Türkiye ibaresi
-    if (/türkiye/i.test(s)) return true;
-    // Fatura terimleri
-    if (/\b(tckn|t\.c|vergi|vkn|telefon|tel|gsm|e[\-\s]?posta|email|fatura|tarih|kampanya|sipari|senaryo|iban|banka|toplam|tutar|kdv|ptt|trendyol|kargo|ettn|ipek|temizlik|sanayi|ticaret|taahhüt|inşaat|ltd|şti|organize|ekonomi|gross)\b/i.test(s)) return true;
-    return false;
-  };
-
-  // Gerçek isim mi? Adres gürültüsünden geçmiş, harf başlıyor, 2–5 kelime
-  const isName = (s, allowOne = false) => {
-    if (!s || s.length < 3 || s.length > 65) return false;
-    if (isAddressOrNoise(s)) return false;
-    const words = s.split(/\s+/).filter(Boolean);
-    if (words.length < (allowOne ? 1 : 2) || words.length > 5) return false;
-    // Her kelime harf ile başlamalı, en az 2 karakter
-    return words.every(w => w.length >= 2 && /^[A-Za-zÇĞİIÖŞÜçğıiöşü]/.test(w));
-  };
-
-  const tryName = (raw, allowOne = false) => {
-    const c = cleanName(raw);
-    return isName(c, allowOne) ? c : '';
-  };
-
-  // ══ YÖNTEM 1 (ana): SAYIN → TCKN arasında isim ara ══════════════════════
-  // Adres satırlarını ATLA (break değil continue) — isim adres satırlarından
-  // sonra da gelebilir. Sadece TCKN'ye gelince dur.
   for (let i = 0; i < lines.length; i++) {
-    if (!/^\s*say[ıi]n\s*[,:\-]?\s*$/i.test(lines[i])) continue;
+    const ln = lines[i].trim();
 
-    // TCKN satırını bul
-    let tcknIdx = -1;
-    for (let k = i + 1; k < Math.min(i + 20, lines.length); k++) {
-      if (/\btckn\b/i.test(lines[k])) { tcknIdx = k; break; }
-    }
-    const limit = tcknIdx > -1 ? tcknIdx : Math.min(i + 10, lines.length);
-
-    // SAYIN ile TCKN arasındaki TÜM satırları tara, gürültüleri ATLA (break değil!)
-    for (let j = i + 1; j < limit; j++) {
-      const n = tryName(lines[j]);
-      if (n) { console.log('[isim SAYIN→TCKN]', n, '| satır:', lines[j]); return n; }
-      // adres satırıysa atla ama döngüyü bitirme (continue davranışı — zaten for döngüsü)
+    // DURUM A: "SAYIN" tek başına bir satır → hemen bir alt satır
+    if (/^say[ıi]n$/i.test(ln)) {
+      for (let j = i+1; j < Math.min(i+3, lines.length); j++) {
+        const candidate = lines[j].trim();
+        if (!candidate) continue;           // boş satır atla, bir sonrakine bak
+        const name = parsePersonName(candidate);
+        if (name) { console.log('[isim A]', name); return name; }
+        break; // ilk dolu satır isim değilse dur, daha aşağıya gitme
+      }
     }
 
-    // 2 kelime bulamazsa tek kelimeyi dene (SAYIN'dan hemen sonraki 3 satır)
-    for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
-      if (/\btckn\b/i.test(lines[j])) break;
-      const n = tryName(lines[j], true);
-      if (n) { console.log('[isim SAYIN→tek]', n); return n; }
-    }
-  }
-
-  // ══ YÖNTEM 2: "SAYIN Ad Soyad" aynı satırda ═════════════════════════════
-  for (const ln of lines) {
-    const m = ln.match(/say[ıi]n[\s:,\-]+(.+)/i);
+    // DURUM B: "SAYIN Ad Soyad" aynı satırda
+    const m = ln.match(/^say[ıi]n\s+(.+)$/i);
     if (m) {
-      const n = tryName(m[1]);
-      if (n) { console.log('[isim inline-SAYIN]', n); return n; }
+      const name = parsePersonName(m[1]);
+      if (name) { console.log('[isim B]', name); return name; }
     }
   }
-
-  // ══ YÖNTEM 3 (fallback): TCKN satırından hemen önceki isim satırı ════════
-  for (let i = 0; i < lines.length; i++) {
-    if (!/\btckn\b/i.test(lines[i])) continue;
-    for (let j = i - 1; j >= Math.max(0, i - 5); j--) {
-      const n = tryName(lines[j]);
-      if (n) { console.log('[isim TCKN-önce]', n); return n; }
-    }
-  }
-
   return '';
 }
 
-// Excel için (değişmedi)
-function extractFromLines(lines, source) {
-  const codeRegexStr = document.getElementById('regexCode').value;
-  let re;
-  try { re = new RegExp(codeRegexStr, 'gi'); }
-  catch(e) { setStatus('Geçersiz kod regex: ' + e.message, 'err'); return; }
+// Metni kişi adı olarak doğrula — sadece harf, 1-4 kelime, rakam yok
+function parsePersonName(raw) {
+  if (!raw) return '';
+  let s = raw
+    .replace(/[\t\r\n]+/g,' ').replace(/\s+/g,' ').trim()
+    .replace(/^say[ıi]n[\s:,\-]*/i,'')
+    .replace(/\s+(?:bey|han[ıi]m)$/i,'')
+    .replace(/[:\-,;\.]+$/,'')
+    .trim();
 
-  const name = extractCustomerName(lines);
-  const fullText = lines.join('\n');
-  let found = [], m;
-  while ((m = re.exec(fullText)) !== null) {
-    const raw = (m[1] || m[0]).trim().replace(/\s+/g, '');
-    if (raw.length >= 4 && !codes.find(c => c.code === raw)) found.push(raw);
-  }
-  if (!found.length) { setStatus(`"${source}" içinde kampanya kodu bulunamadı.`, 'err'); return; }
-  found.forEach(code => codes.push({ code, name, source }));
-  setStatus(`✓ ${found.length} kod bulundu${name ? ' · Müşteri: ' + name : ''}  —  Toplam: ${codes.length}`, 'ok');
-  renderCodes();
-  renderBarcodes();
+  if (!s || s.length < 2 || s.length > 60) return '';
+  if (/\d/.test(s)) return '';                           // rakam varsa isim değil
+  if (!/^[A-Za-zÇĞİIÖŞÜçğıiöşü]/.test(s)) return '';   // harfle başlamalı
+
+  const words = s.split(/\s+/).filter(Boolean);
+  if (words.length < 1 || words.length > 4) return '';   // 1–4 kelime
+
+  // Her kelime: sadece Türkçe/Latin harf + tire/kesme, min 2 karakter
+  if (!words.every(w => w.length >= 2 && /^[A-Za-zÇĞİIÖŞÜçğıiöşü\-']+$/.test(w))) return '';
+
+  return s;
 }
 
 // ── Excel ──────────────────────────────────────────────────────────────────
@@ -537,20 +449,31 @@ function handleExcel(files) {
   if (!files.length) return;
   const file = files[0];
   setStatus('Excel okunuyor...', 'info');
-
   const reader = new FileReader();
   reader.onload = e => {
     try {
-      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const wb = XLSX.read(e.target.result, {type:'array'});
       let lines = [];
       wb.SheetNames.forEach(sn => {
-        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1 });
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1});
         rows.forEach(row => lines.push(row.join(' ')));
       });
-      extractFromLines(lines, file.name);
-    } catch(err) {
-      setStatus('Excel okunamadı: ' + err.message, 'err');
-    }
+      const codeRegexStr = document.getElementById('regexCode').value;
+      let re;
+      try { re = new RegExp(codeRegexStr,'gi'); }
+      catch(e) { setStatus('Geçersiz regex: '+e.message,'err'); return; }
+      const name = extractCustomerName(lines);
+      const fullText = lines.join('\n');
+      let found=[],m;
+      while((m=re.exec(fullText))!==null){
+        const raw=(m[1]||m[0]).trim().replace(/\s+/g,'');
+        if(raw.length>=4&&!codes.find(c=>c.code===raw)) found.push(raw);
+      }
+      if(!found.length){setStatus('"'+file.name+'" içinde kampanya kodu bulunamadı.','err');return;}
+      found.forEach(code=>codes.push({code,name,source:file.name}));
+      setStatus('✓ '+found.length+' kod'+(name?' · '+name:'')+'  —  Toplam: '+codes.length,'ok');
+      renderCodes(); renderBarcodes();
+    } catch(err){ setStatus('Excel okunamadı: '+err.message,'err'); }
   };
   reader.readAsArrayBuffer(file);
 }
@@ -560,22 +483,18 @@ function addManual() {
   const code = document.getElementById('manualCode').value.trim().replace(/\s+/g,'');
   const name = document.getElementById('manualName').value.trim();
   if (!code) return;
-  if (codes.find(c => c.code === code)) {
-    setStatus('Bu kod zaten listede!', 'err'); return;
-  }
-  codes.push({ code, name, source: 'Manuel' });
+  if (codes.find(c => c.code === code)) { setStatus('Bu kod zaten listede!','err'); return; }
+  codes.push({code, name, source:'Manuel'});
   document.getElementById('manualCode').value = '';
   document.getElementById('manualName').value = '';
-  setStatus(`Manuel eklendi: ${code}${name ? ' (' + name + ')' : ''} — Toplam: ${codes.length}`, 'ok');
-  renderCodes();
-  renderBarcodes();
+  setStatus('Manuel eklendi: '+code+(name?' ('+name+')':'')+' — Toplam: '+codes.length,'ok');
+  renderCodes(); renderBarcodes();
 }
 
 function removeCode(idx) {
-  codes.splice(idx, 1);
-  renderCodes();
-  renderBarcodes();
-  setStatus(codes.length ? `${codes.length} kod mevcut` : 'Liste boşaltıldı.');
+  codes.splice(idx,1);
+  renderCodes(); renderBarcodes();
+  setStatus(codes.length ? codes.length+' kod mevcut' : 'Liste boşaltıldı.');
 }
 
 // ── Render ─────────────────────────────────────────────────────────────────
