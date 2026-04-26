@@ -29,6 +29,22 @@
   }
   .card h2 { font-size: 14px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
 
+  /* TAB */
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab {
+    padding: 8px 18px;
+    border-radius: 8px;
+    border: 1px solid #2d3348;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .tab.active { background: #6366f1; border-color: #6366f1; color: #fff; }
+
+  /* DROP ZONE */
   .drop-zone {
     border: 2px dashed #3b4262;
     border-radius: 10px;
@@ -44,56 +60,91 @@
   .drop-text { font-size: 14px; color: #94a3b8; }
   .drop-text span { color: #6366f1; font-weight: 600; }
 
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-  .tab {
-    padding: 8px 18px;
-    border-radius: 8px;
-    border: 1px solid #2d3348;
-    background: transparent;
-    color: #94a3b8;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    transition: all 0.2s;
-  }
-  .tab.active { background: #6366f1; border-color: #6366f1; color: #fff; }
-
-  .regex-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-  .regex-block label {
-    display: block;
-    font-size: 11px;
-    color: #64748b;
-    margin-bottom: 5px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  .regex-block input {
-    width: 100%;
+  /* URL INPUT ALANI */
+  .url-section { display: flex; flex-direction: column; gap: 10px; }
+  .url-input-row { display: flex; gap: 8px; }
+  .url-input-row textarea {
+    flex: 1;
     background: #0f1117;
     border: 1px solid #2d3348;
     color: #e2e8f0;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border-radius: 8px;
-    font-size: 12px;
+    font-size: 13px;
     font-family: monospace;
+    resize: vertical;
+    min-height: 90px;
+    line-height: 1.6;
   }
-  .regex-block input:focus { outline: none; border-color: #6366f1; }
-
-  .btn {
-    padding: 10px 20px;
-    border-radius: 8px;
+  .url-input-row textarea:focus { outline: none; border-color: #6366f1; }
+  .url-input-row textarea::placeholder { color: #3b4262; font-family: 'Segoe UI', sans-serif; font-size: 12px; }
+  .url-fetch-btn {
+    padding: 10px 18px;
+    background: #6366f1;
+    color: #fff;
     border: none;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
     font-weight: 600;
+    align-self: flex-start;
     transition: all 0.2s;
+    white-space: nowrap;
   }
+  .url-fetch-btn:hover { background: #5558e3; }
+  .url-fetch-btn:disabled { background: #3b4262; color: #64748b; cursor: not-allowed; }
+
+  .url-hint {
+    font-size: 11px;
+    color: #4a5568;
+    line-height: 1.6;
+  }
+  .url-hint code { color: #6366f1; background: #1a1d2e; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+
+  /* URL LOG */
+  .url-log { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; max-height: 160px; overflow-y: auto; }
+  .url-log-item {
+    display: flex; align-items: center; gap: 8px;
+    background: #0f1117;
+    border: 1px solid #2d3348;
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .url-log-item.ok  { border-color: #10b981; }
+  .url-log-item.err { border-color: #ef4444; }
+  .url-log-item.loading { border-color: #6366f1; }
+  .url-log-item .icon { font-size: 14px; flex-shrink: 0; }
+  .url-log-item .url-text { color: #94a3b8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
+  .url-log-item .result-text { color: #64748b; white-space: nowrap; }
+  .url-log-item.ok  .result-text { color: #10b981; }
+  .url-log-item.err .result-text { color: #ef4444; }
+
+  /* SPINNER */
+  .spin {
+    display: inline-block; width: 12px; height: 12px;
+    border: 2px solid #6366f133; border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* REGEX */
+  .regex-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 10px; }
+  .regex-block label {
+    display: block; font-size: 11px; color: #64748b; margin-bottom: 5px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .regex-block input {
+    width: 100%; background: #0f1117; border: 1px solid #2d3348;
+    color: #e2e8f0; padding: 8px 12px; border-radius: 8px;
+    font-size: 12px; font-family: monospace;
+  }
+  .regex-block input:focus { outline: none; border-color: #6366f1; }
+
+  /* BTN */
+  .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
   .btn-primary { background: #6366f1; color: #fff; }
   .btn-primary:hover { background: #5558e3; }
   .btn-primary:disabled { background: #3b4262; color: #64748b; cursor: not-allowed; }
@@ -101,22 +152,15 @@
   .btn-success:hover { background: #0ea271; }
   .btn-danger { background: #ef4444; color: #fff; font-size: 11px; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; }
 
+  /* CODES LIST */
   .codes-list { display: flex; flex-direction: column; gap: 8px; max-height: 240px; overflow-y: auto; }
   .code-item {
     display: flex; align-items: center; gap: 10px;
-    background: #0f1117;
-    border: 1px solid #2d3348;
-    border-radius: 8px;
-    padding: 8px 12px;
+    background: #0f1117; border: 1px solid #2d3348; border-radius: 8px; padding: 8px 12px;
   }
   .code-item .badge {
-    background: #1e2130;
-    color: #6366f1;
-    font-size: 10px;
-    padding: 2px 8px;
-    border-radius: 99px;
-    border: 1px solid #3b4262;
-    white-space: nowrap;
+    background: #1e2130; color: #6366f1; font-size: 10px; padding: 2px 8px;
+    border-radius: 99px; border: 1px solid #3b4262; white-space: nowrap;
   }
   .code-meta { flex: 1; display: flex; flex-direction: column; gap: 2px; }
   .code-text { font-family: monospace; font-size: 13px; color: #e2e8f0; }
@@ -124,83 +168,37 @@
 
   .manual-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin-top: 12px; }
   .manual-row input {
-    background: #0f1117;
-    border: 1px solid #2d3348;
-    color: #e2e8f0;
-    padding: 9px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-family: monospace;
+    background: #0f1117; border: 1px solid #2d3348; color: #e2e8f0;
+    padding: 9px 14px; border-radius: 8px; font-size: 13px; font-family: monospace;
   }
   .manual-row input:focus { outline: none; border-color: #6366f1; }
   .manual-row input::placeholder { color: #3b4262; font-family: 'Segoe UI', sans-serif; }
 
+  /* STATUS */
   .status-bar {
-    background: #0f1117;
-    border: 1px solid #2d3348;
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 12px;
-    color: #64748b;
-    margin-bottom: 16px;
-    min-height: 40px;
-    line-height: 1.5;
+    background: #0f1117; border: 1px solid #2d3348; border-radius: 8px;
+    padding: 10px 14px; font-size: 12px; color: #64748b; margin-bottom: 16px;
+    min-height: 40px; line-height: 1.5;
   }
-  .status-bar.ok  { border-color: #10b981; color: #10b981; }
-  .status-bar.err { border-color: #ef4444; color: #ef4444; }
-  .status-bar.info{ border-color: #6366f1; color: #94a3b8; }
+  .status-bar.ok   { border-color: #10b981; color: #10b981; }
+  .status-bar.err  { border-color: #ef4444; color: #ef4444; }
+  .status-bar.info { border-color: #6366f1; color: #94a3b8; }
 
-  .barcodes-preview {
-    display: flex; flex-wrap: wrap; gap: 16px;
-    max-height: 380px; overflow-y: auto;
-  }
+  /* BARCODE PREVIEW */
+  .barcodes-preview { display: flex; flex-wrap: wrap; gap: 16px; max-height: 380px; overflow-y: auto; }
   .barcode-card {
-    background: #fff;
-    border-radius: 10px;
-    padding: 12px 16px 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    min-width: 200px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    background: #fff; border-radius: 10px; padding: 12px 16px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   }
-  .barcode-card .bc-name {
-    font-size: 12px;
-    color: #111;
-    font-weight: 700;
-    text-align: center;
-    font-family: 'Segoe UI', sans-serif;
-    margin-bottom: 2px;
-  }
-  .barcode-card .bc-code {
-    font-size: 12px;
-    color: #111;
-    font-family: monospace;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-align: center;
-    word-break: break-all;
-    margin-top: 2px;
-  }
-  .barcode-card .bc-source {
-    font-size: 9px;
-    color: #aaa;
-  }
+  .barcode-card .bc-name { font-size: 12px; color: #111; font-weight: 700; text-align: center; font-family: 'Segoe UI', sans-serif; margin-bottom: 2px; }
+  .barcode-card .bc-code { font-size: 12px; color: #111; font-family: monospace; font-weight: 700; letter-spacing: 0.5px; text-align: center; word-break: break-all; margin-top: 2px; }
+  .barcode-card .bc-source { font-size: 9px; color: #aaa; }
 
   .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
   .empty-state { text-align: center; color: #3b4262; padding: 30px; font-size: 14px; }
-
   .file-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-  .file-pill {
-    background: #1a1d2e;
-    border: 1px solid #3b4262;
-    border-radius: 99px;
-    padding: 4px 12px;
-    font-size: 12px;
-    color: #94a3b8;
-  }
-
+  .file-pill { background: #1a1d2e; border: 1px solid #3b4262; border-radius: 99px; padding: 4px 12px; font-size: 12px; color: #94a3b8; }
   .hint { font-size: 11px; color: #4a5568; margin-top: 8px; line-height: 1.6; }
   .hint code { color: #6366f1; background: #1a1d2e; padding: 1px 5px; border-radius: 4px; }
 </style>
@@ -208,16 +206,18 @@
 <body>
 
 <h1>📦 Kargo Çıkış Kodu → Barkod</h1>
-<p class="subtitle">PDF veya Excel'den kargo kodu ve alıcı adını otomatik çek · Code 128 · PDF çıktı</p>
+<p class="subtitle">PDF dosyası veya URL'den kargo kodu ve alıcı adını otomatik çek · Code 128 · PDF çıktı</p>
 
-<!-- Dosya Yükle -->
+<!-- ① Dosya Yükle -->
 <div class="card">
-  <h2>1 · Dosya Yükle</h2>
+  <h2>1 · Kaynak Seç</h2>
   <div class="tabs">
-    <button class="tab active" id="tabPDF"   onclick="switchTab('pdf')">📄 PDF</button>
+    <button class="tab active" id="tabPDF"   onclick="switchTab('pdf')">📄 PDF Dosyası</button>
+    <button class="tab"        id="tabURL"   onclick="switchTab('url')">🔗 PDF Linki (URL)</button>
     <button class="tab"        id="tabExcel" onclick="switchTab('excel')">📊 Excel / CSV</button>
   </div>
 
+  <!-- PDF dosyası -->
   <div id="tab-pdf">
     <div class="drop-zone" id="pdfDrop">
       <input type="file" id="pdfInput" accept=".pdf" multiple onchange="handlePDF(this.files)">
@@ -228,6 +228,19 @@
     <div class="file-list" id="pdfFileList"></div>
   </div>
 
+  <!-- URL -->
+  <div id="tab-url" style="display:none">
+    <div class="url-section">
+      <div class="url-input-row">
+        <textarea id="urlInput" placeholder="Her satıra bir PDF linki yapıştır:&#10;https://vip.birfatura.com/dosyagetir?tur=9&tarih=...&#10;https://baska-sistem.com/fatura.pdf&#10;https://..."></textarea>
+        <button class="url-fetch-btn" id="urlFetchBtn" onclick="fetchURLs()">⬇ Çek</button>
+      </div>
+     
+      <div class="url-log" id="urlLog"></div>
+    </div>
+  </div>
+
+  <!-- Excel -->
   <div id="tab-excel" style="display:none">
     <div class="drop-zone" id="xlsDrop">
       <input type="file" id="xlsInput" accept=".xlsx,.xls,.csv" onchange="handleExcel(this.files)">
@@ -237,7 +250,7 @@
   </div>
 </div>
 
-<!-- Regex Ayarı -->
+<!-- ② Regex -->
 <div class="card">
   <h2>2 · Tespit Regex Ayarları</h2>
   <div class="regex-grid">
@@ -254,13 +267,13 @@
 </div>
 
 <!-- Durum -->
-<div class="status-bar" id="statusBar">Dosya yüklemesi bekleniyor...</div>
+<div class="status-bar" id="statusBar">Kaynak seçin ve PDF yükleyin veya link yapıştırın...</div>
 
-<!-- Kodlar -->
+<!-- ③ Kodlar -->
 <div class="card">
   <h2>3 · Tespit Edilen Kodlar & Alıcılar</h2>
   <div class="codes-list" id="codesList">
-    <div class="empty-state">Henüz kod yok — dosya yükleyin veya manuel ekleyin</div>
+    <div class="empty-state">Henüz kayıt yok — dosya yükleyin, link yapıştırın veya manuel ekleyin</div>
   </div>
   <div class="manual-row">
     <input type="text" id="manualCode" placeholder="Kargo kodu..." onkeydown="if(event.key==='Enter')addManual()">
@@ -269,7 +282,7 @@
   </div>
 </div>
 
-<!-- Önizleme & İndir -->
+<!-- ④ Önizleme & İndir -->
 <div class="card">
   <h2>4 · Barkod Önizleme & İndir</h2>
   <div class="barcodes-preview" id="barcodesPreview">
@@ -284,15 +297,51 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-let codes = []; // [{code, name, source}]
+let codes = [];
 
+// ── Proxy listesi — CORS sorununu aşmak için sırayla denenir ──────────────
+// Kendi sistemin erişilebiliyorsa direkt çalışır, değilse proxy üzerinden geçer
+const CORS_PROXIES = [
+  url => url,                                                    // 1) Direkt dene
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,    // 2) corsproxy.io
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, // 3) allorigins
+  url => `https://thingproxy.freeboard.io/fetch/${url}`,        // 4) thingproxy
+];
+
+async function fetchPDFBytes(url) {
+  let lastErr;
+  for (const proxyFn of CORS_PROXIES) {
+    try {
+      const proxyUrl = proxyFn(url);
+      const res = await fetch(proxyUrl, {
+        headers: { 'Accept': 'application/pdf,*/*' }
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const ct = res.headers.get('content-type') || '';
+      // İçerik PDF mi kontrol et (bazı proxyler HTML döner)
+      const buf = await res.arrayBuffer();
+      const magic = new Uint8Array(buf.slice(0, 4));
+      const isPDF = magic[0]===0x25 && magic[1]===0x50 && magic[2]===0x44 && magic[3]===0x46; // %PDF
+      if (!isPDF) throw new Error('Gelen içerik PDF değil');
+      return buf;
+    } catch(e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+// ── Tab geçişi ─────────────────────────────────────────────────────────────
 function switchTab(t) {
-  document.getElementById('tab-pdf').style.display   = t === 'pdf'   ? '' : 'none';
-  document.getElementById('tab-excel').style.display = t === 'excel' ? '' : 'none';
+  ['pdf','url','excel'].forEach(id => {
+    document.getElementById('tab-' + id).style.display = t === id ? '' : 'none';
+  });
   document.getElementById('tabPDF').className   = 'tab' + (t === 'pdf'   ? ' active' : '');
+  document.getElementById('tabURL').className   = 'tab' + (t === 'url'   ? ' active' : '');
   document.getElementById('tabExcel').className = 'tab' + (t === 'excel' ? ' active' : '');
 }
 
+// ── Drag & Drop ────────────────────────────────────────────────────────────
 ['pdfDrop','xlsDrop'].forEach(id => {
   const el = document.getElementById(id);
   if (!el) return;
@@ -311,7 +360,61 @@ function setStatus(msg, type='') {
   el.className = 'status-bar ' + type;
 }
 
-// ── PDF okuma ──────────────────────────────────────────────────────────────
+// ── URL'den PDF çek ────────────────────────────────────────────────────────
+async function fetchURLs() {
+  const raw = document.getElementById('urlInput').value.trim();
+  if (!raw) return;
+
+  const urls = raw.split(/\n/).map(u => u.trim()).filter(u => u.length > 0);
+  if (!urls.length) return;
+
+  const btn = document.getElementById('urlFetchBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Yükleniyor...';
+
+  const logEl = document.getElementById('urlLog');
+
+  for (const url of urls) {
+    // Log satırı ekle
+    const logId = 'log_' + Math.random().toString(36).slice(2);
+    const logItem = document.createElement('div');
+    logItem.className = 'url-log-item loading';
+    logItem.id = logId;
+    logItem.innerHTML = `<span class="spin"></span><span class="url-text">${url}</span><span class="result-text">Yükleniyor...</span>`;
+    logEl.appendChild(logItem);
+    logEl.scrollTop = logEl.scrollHeight;
+
+    try {
+      setStatus(`Çekiliyor: ${url.slice(0, 60)}...`, 'info');
+      const buf = await fetchPDFBytes(url);
+      const fileName = decodeURIComponent(url.split('/').pop().split('?')[0]) || 'link.pdf';
+
+      // PDF parse
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      let pageCount = 0;
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page    = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        const lines   = groupIntoLines(content.items);
+        const before  = codes.length;
+        extractFromLines(lines, fileName + ' s.' + p);
+        if (codes.length > before) pageCount++;
+      }
+
+      logItem.className = 'url-log-item ok';
+      logItem.innerHTML = `<span class="icon">✅</span><span class="url-text">${url}</span><span class="result-text">${pageCount} kayıt bulundu</span>`;
+    } catch(e) {
+      logItem.className = 'url-log-item err';
+      logItem.innerHTML = `<span class="icon">❌</span><span class="url-text">${url}</span><span class="result-text">${e.message}</span>`;
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = '⬇ Çek';
+  setStatus(`✓ URL işleme tamamlandı — Toplam: ${codes.length} kayıt`, 'ok');
+}
+
+// ── PDF dosyası ────────────────────────────────────────────────────────────
 async function handlePDF(files) {
   if (!files.length) return;
   setStatus('PDF okunuyor...', 'info');
@@ -326,22 +429,20 @@ async function handlePDF(files) {
     try {
       const ab  = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-
-      // Her sayfayı ayrı işle — her sayfa = bir sipariş
       for (let p = 1; p <= pdf.numPages; p++) {
         const page    = await pdf.getPage(p);
         const content = await page.getTextContent();
-        // Satırları y koordinatına göre grupla
-        const lines = groupIntoLines(content.items);
+        const lines   = groupIntoLines(content.items);
         extractFromLines(lines, file.name + ' s.' + p);
       }
+      setStatus(`✓ ${codes.length} kayıt toplandı`, 'ok');
     } catch(e) {
       setStatus('PDF okunamadı: ' + e.message, 'err');
     }
   }
 }
 
-// PDF öğelerini satırlara grupla (y koordinatına göre)
+// ── Satır gruplama ─────────────────────────────────────────────────────────
 function groupIntoLines(items) {
   const lineMap = {};
   items.forEach(item => {
@@ -355,7 +456,7 @@ function groupIntoLines(items) {
     .filter(l => l.length > 0);
 }
 
-// Her sayfanın satırlarından kod + isim çek
+// ── Kod & isim çıkarma ─────────────────────────────────────────────────────
 function extractFromLines(lines, source) {
   const codeRegexStr = document.getElementById('regexCode').value;
   const nameRegexStr = document.getElementById('regexName').value;
@@ -368,36 +469,23 @@ function extractFromLines(lines, source) {
   let foundName = '';
 
   for (const line of lines) {
-    // Kodu ara
     if (!foundCode) {
       const m = codeRegex.exec(line);
       if (m) foundCode = (m[1] || m[0]).trim().replace(/\s+/g, '');
     }
-    // İsmi ara
     if (nameRegex && !foundName) {
       const m = nameRegex.exec(line);
-      if (m) {
-        foundName = (m[1] || '').trim();
-        // Sadece harf ve boşluk içermeli, adres kısmı gelmemeli
-        // İlk satır değeri al, fazlası değil
-        foundName = foundName.split(/\n/)[0].trim();
-      }
+      if (m) foundName = (m[1] || '').trim().split(/\n/)[0].trim();
     }
     if (foundCode && foundName) break;
   }
 
-  if (!foundCode) {
-    // sessizce atla — çok sayfalı PDF'de bazı sayfalar boş olabilir
-    return;
-  }
-
-  // Duplicate kontrolü
+  if (!foundCode) return;
   if (codes.find(c => c.code === foundCode)) return;
 
   codes.push({ code: foundCode, name: foundName, source });
   renderCodes();
   renderBarcodes();
-  setStatus(`✓ ${codes.length} kayıt toplandı — Son: ${foundCode} (${foundName || 'isim yok'})`, 'ok');
 }
 
 // ── Excel ──────────────────────────────────────────────────────────────────
@@ -405,7 +493,6 @@ function handleExcel(files) {
   if (!files.length) return;
   const file = files[0];
   setStatus('Excel okunuyor...', 'info');
-
   const reader = new FileReader();
   reader.onload = e => {
     try {
@@ -416,6 +503,7 @@ function handleExcel(files) {
         rows.forEach(row => lines.push(row.join(' ')));
       });
       extractFromLines(lines, file.name);
+      setStatus(`✓ ${codes.length} kayıt toplandı`, 'ok');
     } catch(err) {
       setStatus('Excel okunamadı: ' + err.message, 'err');
     }
@@ -447,10 +535,7 @@ function removeCode(idx) {
 // ── Render ─────────────────────────────────────────────────────────────────
 function renderCodes() {
   const el = document.getElementById('codesList');
-  if (!codes.length) {
-    el.innerHTML = '<div class="empty-state">Henüz kod yok — dosya yükleyin veya manuel ekleyin</div>';
-    return;
-  }
+  if (!codes.length) { el.innerHTML = '<div class="empty-state">Henüz kayıt yok</div>'; return; }
   el.innerHTML = codes.map((c, i) => `
     <div class="code-item">
       <span class="badge">${c.source}</span>
@@ -469,8 +554,7 @@ function renderBarcodes() {
 
   if (!codes.length) {
     el.innerHTML = '<div class="empty-state" style="width:100%">Kodlar eklenince barkodlar burada görünecek</div>';
-    btn.disabled = true;
-    return;
+    btn.disabled = true; return;
   }
 
   el.innerHTML = codes.map((c, i) => `
@@ -484,19 +568,12 @@ function renderBarcodes() {
 
   codes.forEach((c, i) => {
     try {
-      JsBarcode(`#bc${i}`, c.code, {
-        format: 'CODE128', width: 2, height: 60,
-        displayValue: false, margin: 0
-      });
+      JsBarcode(`#bc${i}`, c.code, { format: 'CODE128', width: 2, height: 60, displayValue: false, margin: 0 });
     } catch(e) {
       const card = document.getElementById('bc' + i)?.parentElement;
-      if (card) {
-        const codeEl = card.querySelector('.bc-code');
-        if (codeEl) { codeEl.textContent += ' ⚠ Geçersiz'; codeEl.style.color = '#ef4444'; }
-      }
+      if (card) { const codeEl = card.querySelector('.bc-code'); if (codeEl) { codeEl.textContent += ' ⚠ Geçersiz'; codeEl.style.color = '#ef4444'; } }
     }
   });
-
   btn.disabled = false;
 }
 
@@ -505,95 +582,60 @@ async function downloadPDF() {
   if (!codes.length) return;
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = 210, pageH = 297, marginX = 14, marginTop = 24;
+  const colW = (pageW - marginX * 2 - 8) / 2;
+  const rowH = 52, barcodeH = 26;
 
-  const pageW = 210, pageH = 297;
-  const marginX = 14, marginTop = 24;
-  const colW   = (pageW - marginX * 2 - 8) / 2;
-  const rowH   = 52;
-  const barcodeH = 26;
-
-  // Başlık
-  doc.setFontSize(15);
-  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15); doc.setFont('helvetica', 'bold');
   doc.text('Kargo Çıkış Barkodları', pageW / 2, 12, { align: 'center' });
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(130);
-  doc.text(
-    `Oluşturulma: ${new Date().toLocaleString('tr-TR')}   |   Toplam: ${codes.length} kayıt`,
-    pageW / 2, 18, { align: 'center' }
-  );
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(130);
+  doc.text(`Oluşturulma: ${new Date().toLocaleString('tr-TR')}   |   Toplam: ${codes.length} kayıt`, pageW / 2, 18, { align: 'center' });
   doc.setTextColor(0);
 
   let col = 0, y = marginTop + 4, x = marginX;
 
   for (let i = 0; i < codes.length; i++) {
     const c = codes[i];
-
     const canvas = document.createElement('canvas');
-    try {
-      JsBarcode(canvas, c.code, { format: 'CODE128', width: 3, height: 90, displayValue: false, margin: 6 });
-    } catch(e) {
-      col++; if (col >= 2) { col = 0; y += rowH; x = marginX; } else x = marginX + colW + 8;
-      continue;
-    }
+    try { JsBarcode(canvas, c.code, { format: 'CODE128', width: 3, height: 90, displayValue: false, margin: 6 }); }
+    catch(e) { col++; if (col >= 2) { col = 0; y += rowH; x = marginX; } else x = marginX + colW + 8; continue; }
 
     const imgData = canvas.toDataURL('image/png');
     const bcW = colW - 8;
-
-    // Kart çerçevesi
-    doc.setDrawColor(210);
-    doc.setLineWidth(0.25);
-    doc.roundedRect(x, y, colW, rowH - 2, 2, 2);
-
+    doc.setDrawColor(210); doc.setLineWidth(0.25); doc.roundedRect(x, y, colW, rowH - 2, 2, 2);
     let cursorY = y + 4;
 
-    // Alıcı adı — kalın, üstte
     if (c.name) {
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(20);
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(20);
       doc.text(c.name, x + colW / 2, cursorY + 3, { align: 'center', maxWidth: colW - 6 });
       cursorY += 7;
     }
 
-    // Barkod
     doc.addImage(imgData, 'PNG', x + 4, cursorY, bcW, barcodeH);
     cursorY += barcodeH + 4;
 
-    // Kargo kodu — büyük, kalın, courier
-    doc.setFontSize(11);
-    doc.setFont('courier', 'bold');
-    doc.setTextColor(10);
+    doc.setFontSize(11); doc.setFont('courier', 'bold'); doc.setTextColor(10);
     doc.text(c.code, x + colW / 2, cursorY + 2, { align: 'center', maxWidth: colW - 6 });
     cursorY += 6;
 
-    // Kaynak
-    doc.setFontSize(6);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(160);
+    doc.setFontSize(6); doc.setFont('helvetica', 'normal'); doc.setTextColor(160);
     doc.text(c.source, x + colW / 2, cursorY + 1, { align: 'center' });
     doc.setTextColor(0);
 
-    col++;
-    if (col >= 2) { col = 0; y += rowH; x = marginX; }
-    else x = marginX + colW + 8;
-
-    if (y + rowH > pageH - 12 && i < codes.length - 1) {
-      doc.addPage(); y = 15; x = marginX; col = 0;
-    }
+    col++; if (col >= 2) { col = 0; y += rowH; x = marginX; } else x = marginX + colW + 8;
+    if (y + rowH > pageH - 12 && i < codes.length - 1) { doc.addPage(); y = 15; x = marginX; col = 0; }
   }
 
-  const tarih = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
-  doc.save(`kargo_barkodlari_${tarih}.pdf`);
+  doc.save(`kargo_barkodlari_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')}.pdf`);
   setStatus('✓ PDF başarıyla indirildi!', 'ok');
 }
 
 function clearAll() {
   codes = [];
   document.getElementById('pdfFileList').innerHTML = '';
-  renderCodes();
-  renderBarcodes();
+  document.getElementById('urlLog').innerHTML = '';
+  document.getElementById('urlInput').value = '';
+  renderCodes(); renderBarcodes();
   setStatus('Liste temizlendi.');
 }
 </script>
